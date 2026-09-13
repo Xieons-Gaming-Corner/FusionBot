@@ -10,6 +10,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.Versioning;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,6 +20,7 @@ namespace SysBot.Pokemon.Discord
 {
     public class Pokepaste : ModuleBase<SocketCommandContext>
     {
+        [SupportedOSPlatform("windows")]
         private static System.Drawing.Image CombineImages(List<System.Drawing.Image> images)
         {
 #pragma warning disable CA1416 // Validate platform compatibility
@@ -53,6 +55,7 @@ namespace SysBot.Pokemon.Discord
         [Command("pokepaste")]
         [Alias("pp", "Pokepaste", "PP")]
         [Summary("Generates a team from a specified pokepaste URL and sends it as files via DM.")]
+        [SupportedOSPlatform("windows")]
         public async Task GenerateTeamFromUrlAsync(string pokePasteUrl)
         {
             var generatingMessage = await ReplyAsync("Generating and sending your Pokepaste team. Please wait...");
@@ -120,13 +123,14 @@ namespace SysBot.Pokemon.Discord
                                 await using var entryStream = entry.Open();
                                 await entryStream.WriteAsync(pk.Data.ToArray());
 
-                                string speciesImageUrl = TradeExtensions<PK9>.PokeImg(pk, false, false);
-                                using var imageClient = new HttpClient();
-                                var imageBytes = await imageClient.GetByteArrayAsync(speciesImageUrl).ConfigureAwait(false);
-#pragma warning disable CA1416 // Validate platform compatibility
-                                var speciesImage = System.Drawing.Image.FromStream(new MemoryStream(imageBytes));
-                                pokemonImages.Add(speciesImage);
-#pragma warning restore CA1416 // Validate platform compatibility
+                                if (OperatingSystem.IsWindowsVersionAtLeast(6, 1))
+                                {
+                                    string speciesImageUrl = TradeExtensions<PK9>.PokeImg(pk, false, false);
+                                    using var imageClient = new HttpClient();
+                                    var imageBytes = await imageClient.GetByteArrayAsync(speciesImageUrl).ConfigureAwait(false);
+                                    var speciesImage = System.Drawing.Image.FromStream(new MemoryStream(imageBytes));
+                                    pokemonImages.Add(speciesImage);
+                                }
                             }
                             catch (Exception ex)
                             {
@@ -136,51 +140,60 @@ namespace SysBot.Pokemon.Discord
                         }
                     }
 
-                    using var combinedImage = CombineImages(pokemonImages);
-                    foreach (var img in pokemonImages)
-                        img.Dispose();
-                    pokemonImages.Clear();
-
+                    
                     memoryStream.Position = 0;
 
                     // Send the ZIP file to the user's DM
                     await Context.User.SendFileAsync(memoryStream, $"{title}.zip", text: "Here's your team!").ConfigureAwait(false);
 
-                    // Save the combined image as a file
-#pragma warning disable CA1416 // Validate platform compatibility
-                    combinedImage.Save($"{title}.png");
-#pragma warning restore CA1416 // Validate platform compatibility
-                    await using (var imageStream = new MemoryStream())
+                    if (OperatingSystem.IsWindowsVersionAtLeast(6, 1) && pokemonImages.Count > 0)
                     {
 #pragma warning disable CA1416 // Validate platform compatibility
-                        combinedImage.Save(imageStream, System.Drawing.Imaging.ImageFormat.Png);
+                        var combinedImage = CombineImages(pokemonImages);
+                        try
+                        {
+                            foreach (var image in pokemonImages)
+                                image.Dispose();
+
+                            pokemonImages.Clear();
+
+                            combinedImage.Save($"{title}.png");
+                            await using (var imageStream = new MemoryStream())
+                            {
+                                combinedImage.Save(imageStream, System.Drawing.Imaging.ImageFormat.Png);
+                                imageStream.Position = 0;
+
+                                // Send the combined image file with an embed to the channel
+                                var embedBuilder = new EmbedBuilder()
+                                    .WithColor(GetTypeColor())
+                                    .WithAuthor(
+                                        author =>
+                                        {
+                                            author
+                                                .WithName($"{Context.User.Username}'s Generated Team")
+                                                .WithIconUrl(Context.User.GetAvatarUrl() ?? Context.User.GetDefaultAvatarUrl());
+                                        })
+                                    .WithImageUrl($"attachment://{title}.png")
+                                    .WithFooter($"Legalized Team Sent to {Context.User.Username}'s Inbox")
+                                    .WithCurrentTimestamp();
+
+                                var embed = embedBuilder.Build();
+
+                                await Context.Channel.SendFileAsync(imageStream, $"{title}.png", embed: embed).ConfigureAwait(false);
+                            }
+
+                            // Clean up the temporary image file
+                            File.Delete($"{title}.png");
+                        }
+                        finally
+                        {
+                            combinedImage.Dispose();
+                        }
 #pragma warning restore CA1416 // Validate platform compatibility
-                        imageStream.Position = 0;
-
-                        // Send the combined image file with an embed to the channel
-                        var embedBuilder = new EmbedBuilder()
-                            .WithColor(GetTypeColor())
-                            .WithAuthor(
-                                author =>
-                                {
-                                    author
-                                        .WithName($"{Context.User.Username}'s Generated Team")
-                                        .WithIconUrl(Context.User.GetAvatarUrl() ?? Context.User.GetDefaultAvatarUrl());
-                                })
-                            .WithImageUrl($"attachment://{title}.png")
-                            .WithFooter($"Legalized Team Sent to {Context.User.Username}'s Inbox")
-                            .WithCurrentTimestamp();
-
-                        var embed = embedBuilder.Build();
-
-                        await Context.Channel.SendFileAsync(imageStream, $"{title}.png", embed: embed).ConfigureAwait(false);
-
-                        // Clean up the messages after 10 seconds
-                        await DeleteMessagesAfterDelayAsync(generatingMessage, Context.Message, 10).ConfigureAwait(false);
                     }
 
-                    // Clean up the temporary image file
-                    File.Delete($"{title}.png");
+                    // Clean up the messages after 10 seconds
+                    await DeleteMessagesAfterDelayAsync(generatingMessage, Context.Message, 10).ConfigureAwait(false);
                 }).ConfigureAwait(false);
             }
             catch (Exception ex)
