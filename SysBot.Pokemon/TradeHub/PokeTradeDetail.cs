@@ -101,7 +101,9 @@ namespace SysBot.Pokemon
             IsFavored = favored;
 
             // assign the passed-in LGPE trade code list (can be null)
+#pragma warning disable CS8601 // Possible null reference assignment.
             LGPETradeCode = lgcode;
+#pragma warning restore CS8601 // Possible null reference assignment.
 
             BatchTradeNumber = batchTradeNumber;
             TotalBatchTrades = totalBatchTrades;
