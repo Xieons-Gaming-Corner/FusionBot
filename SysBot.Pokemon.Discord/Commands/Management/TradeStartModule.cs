@@ -207,12 +207,19 @@ public class TradeStartModule<T> : ModuleBase<SocketCommandContext> where T : PK
 
     public static async Task<(int R, int G, int B)> GetDominantColorAsync(string imagePath)
     {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(6, 1))
+            return (255, 255, 255);
+
         try
         {
             using var image = await LoadImageAsync(imagePath);
+            if (image is null)
+                return (255, 255, 255);
+
             var colorCount = new Dictionary<Color, int>();
 
             for (int y = 0; y < image.Height; y++)
+            {
                 for (int x = 0; x < image.Width; x++)
                 {
                     var pixel = image.GetPixel(x, y);
@@ -226,6 +233,7 @@ public class TradeStartModule<T> : ModuleBase<SocketCommandContext> where T : PK
 
                     colorCount[key] = colorCount.TryGetValue(key, out var v) ? v + 1 : 1;
                 }
+            }
 
             if (colorCount.Count == 0)
                 return (255, 255, 255);
@@ -239,8 +247,11 @@ public class TradeStartModule<T> : ModuleBase<SocketCommandContext> where T : PK
         }
     }
 
-    private static async Task<Bitmap> LoadImageAsync(string imagePath)
+    private static async Task<Bitmap?> LoadImageAsync(string imagePath)
     {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(6, 1))
+            return null;
+
         if (!imagePath.StartsWith("http", StringComparison.OrdinalIgnoreCase))
             return new Bitmap(imagePath);
 
