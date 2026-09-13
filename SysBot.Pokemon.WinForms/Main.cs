@@ -2,7 +2,6 @@ using ControllerCommand = SysBot.Pokemon.WinForms.BotController.BotControlComman
 using FontAwesome.Sharp;
 using PKHeX.Core;
 using SysBot.Base;
-using SysBot.Pokemon.WinForms;
 using SysBot.Pokemon.Discord;
 using SysBot.Pokemon.Discord.Helpers;
 using SysBot.Pokemon.Helpers;
@@ -1246,7 +1245,7 @@ namespace SysBot.Pokemon.WinForms
         }
 
         // Minimize button
-        private void BtnMinimize_Click(object sender, EventArgs e)
+        private void BtnMinimize_Click(object? sender, EventArgs e)
         {
             WindowState = FormWindowState.Minimized; // Minimize the window on Minimize button click
         }

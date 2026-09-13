@@ -1037,7 +1037,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
             .WithColor(Color.DarkPurple);
 
         var sentEmbed = await ReplyAsync(embed: embed.Build());
-        _ = DeleteMessagesAfterDelayAsync(null, sentEmbed, 60);
+        _ = DeleteMessagesAfterDelayAsync(null!, sentEmbed, 60);
     }
 
 
@@ -1498,7 +1498,9 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
         if (ignoreAutoOT ||
             !SysCord<T>.Runner.Config.Legality.UseTradePartnerInfo ||
             !SysCord<T>.Runner.Config.Trade.TradeConfiguration.StoreTradeCodes)
+        {
             return;
+        }
 
         var tradeCodeStorage = new TradeCodeStorage();
         var cachedTrainerDetails = tradeCodeStorage.GetTradeDetails(userID);
@@ -1678,10 +1680,12 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
 
         // Auto-delete original message (as before)
         if (Context.Message is IUserMessage userMessage)
+        {
             _ = Helpers<T>.DeleteMessagesAfterDelayAsync(
                 userMessage,
                 null,
                 isHiddenTrade ? 0 : 2);
+        }
     }
 
     private async Task ProcessTradeAttachmentAsync(int code, RequestSignificance sig, SocketUser user, bool isHiddenTrade = false, bool ignoreAutoOT = false)
@@ -1702,11 +1706,11 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
             isHiddenTrade: isHiddenTrade, ignoreAutoOT: ignoreAutoOT);
     }
 
-    private static async Task DeleteMessagesAfterDelayAsync(IMessage botMsg, IMessage userMsg, int delaySec)
+    private static async Task DeleteMessagesAfterDelayAsync(IMessage? botMsg, IMessage? userMsg, int delaySec)
     {
         await Task.Delay(delaySec * 1000);
-        try { await botMsg.DeleteAsync(); } catch { }
-        try { await userMsg.DeleteAsync(); } catch { }
+        try { if (botMsg != null) await botMsg.DeleteAsync(); } catch { }
+        try { if (userMsg != null) await userMsg.DeleteAsync(); } catch { }
     }
 
     private static string ExtractSpeciesName(string firstLine)
