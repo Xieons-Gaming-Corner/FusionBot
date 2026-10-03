@@ -46,6 +46,12 @@ public class PokeBotRunnerImpl<T> : PokeBotRunner<T> where T : PKM, new()
         {
             try
             {
+                if (_config is null)
+                {
+                    LogUtil.LogError("Discord client cannot start because ProgramConfig is unavailable.", "SysCord");
+                    return;
+                }
+
                 var bot = new SysCord<T>(this, _config);
                 await bot.MainAsync(apiToken, CancellationToken.None).ConfigureAwait(false);
                 // Returned cleanly (e.g. health watchdog tripped): reset backoff.

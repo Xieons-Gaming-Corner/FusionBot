@@ -717,8 +717,9 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
                 // If it's NOT the correct prefix → show the error.
                 if (!content.StartsWith(correctPrefix))
                 {
-                    await SafeSendMessageAsync(msg.Channel,
-                        $"Incorrect prefix! The correct prefix is `{correctPrefix}`");
+                    //await SafeSendMessageAsync(msg.Channel,
+                    //    $"Incorrect prefix! The correct prefix is `{correctPrefix}`");
+                    //Removed - Need a GUI Option for Respond to Wrong Prefix 
                     return;
                 }
 

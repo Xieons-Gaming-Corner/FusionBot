@@ -31,6 +31,9 @@ namespace SysBot.Tests
             var setstring = ShowdownTranslator<PK9>.Chinese2Showdown(input);
             var set = ShowdownUtil.ConvertToShowdown(setstring);
             set.Should().NotBeNull();
+            if (set is null)
+                return;
+
             var template = AutoLegalityWrapper.GetTemplate(set);
             template.Species.Should().BeGreaterThan(0);
             var sav = AutoLegalityWrapper.GetTrainerInfo<PK9>();

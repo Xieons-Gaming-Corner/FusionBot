@@ -217,9 +217,11 @@ namespace SysBot.Pokemon.Discord.Modules
 
             const int itemsPerPage = 10;
 
-            var files = Directory.GetFiles(HOMEFolder)
-                .Select(Path.GetFileName)
-                .OrderBy(x => x)
+            List<string> files = Directory.GetFiles(HOMEFolder)
+                .Select(path => Path.GetFileName(path))
+                .Where(fileName => !string.IsNullOrWhiteSpace(fileName))
+                .Select(fileName => fileName!)
+                .OrderBy(fileName => fileName, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             if (files.Count == 0)
@@ -229,16 +231,17 @@ namespace SysBot.Pokemon.Discord.Modules
             }
 
             // Parse filter + page
-            var parts = args.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            string filter = "";
+            var parts = args.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            string filter = string.Empty;
             int page = 1;
 
             if (parts.Length > 0)
             {
-                if (int.TryParse(parts.Last(), out int parsedPage))
+                var lastPart = parts[^1];
+                if (int.TryParse(lastPart, out int parsedPage))
                 {
                     page = parsedPage;
-                    filter = string.Join(" ", parts.Take(parts.Length - 1));
+                    filter = string.Join(" ", parts[..^1]);
                 }
                 else
                 {
@@ -301,13 +304,16 @@ namespace SysBot.Pokemon.Discord.Modules
                 );
             }
 
-            var embedMsg = await ReplyAsync(embed: embed.Build());
+            var embedMsg = await ReplyAsync(embed: embed.Build()).ConfigureAwait(false);
 
-            await Task.Delay(20_000);
+            if (embedMsg is null)
+                return;
+
+            await Task.Delay(20_000).ConfigureAwait(false);
 
             try
             {
-                await embedMsg.DeleteAsync();
+                await embedMsg.DeleteAsync().ConfigureAwait(false);
             }
             catch { }
         }
@@ -473,7 +479,8 @@ namespace SysBot.Pokemon.Discord.Modules
                 }
 
                 var filePath = files[index - 1];
-                var fileName = Path.GetFileName(filePath);
+                var fileName = Path.GetFileName(filePath)
+                    ?? throw new InvalidOperationException("Could not determine the HOME-ready file name.");
 
                 // Send file directly
                 await using (var fs = File.OpenRead(filePath))
